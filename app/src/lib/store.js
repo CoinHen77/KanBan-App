@@ -142,9 +142,10 @@ export async function signInWithGoogle() {
   const user = auth.currentUser;
   try {
     if (user?.isAnonymous) {
-      await linkWithPopup(user, provider);
+      const result = await linkWithPopup(user, provider);
+      currentUser.set(result.user); // linkWithPopup doesn't trigger onAuthStateChanged
     } else {
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, provider); // onAuthStateChanged handles this
     }
   } catch (e) {
     if (e.code === 'auth/credential-already-in-use') {
