@@ -1,7 +1,15 @@
 <script>
+  import { onMount } from 'svelte';
   import '../app.css';
   import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard, currentAuthUid, currentUserId } from '$lib/store.js';
   import { BOARD_COLORS, effectiveColumn } from '$lib/logic.js';
+
+  onMount(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .catch(e => console.error('SW registration failed:', e));
+    }
+  });
 
   let newBoardName = '';
   let newBoardColor = BOARD_COLORS[0];
