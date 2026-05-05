@@ -1,11 +1,13 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { editingCardId } from './store.js';
+  import { editingCardId, boards, updateCard } from './store.js';
   import { isOverdue, isWaitingStale, formatDateRel, todayISO } from './logic.js';
 
   export let card;
 
   const dispatch = createEventDispatcher();
+
+  let showMoveTo = false;
 
   $: overdue = isOverdue(card);
   $: stale = isWaitingStale(card);
@@ -14,6 +16,7 @@
   $: donedCount = card.subtasks?.filter(s => s.done).length ?? 0;
   $: totalSubs = card.subtasks?.length ?? 0;
   $: overdueSubCount = card.subtasks?.filter(s => !s.done && s.due_date && s.due_date < todayISO()).length ?? 0;
+  $: otherBoards = $boards.filter(b => !b.archived && b.id !== card.board_id);
 
   function onDragStart(e) {
     dispatch('dragstart', e);
@@ -24,7 +27,18 @@
     dispatch('dragend', e);
     e.currentTarget.classList.remove('dragging');
   }
+
+  function moveTo(boardId) {
+    updateCard(card.id, { board_id: boardId });
+    showMoveTo = false;
+  }
+
+  function onWindowClick() {
+    if (showMoveTo) showMoveTo = false;
+  }
 </script>
+
+<svelte:window on:click={onWindowClick} />
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
@@ -58,6 +72,26 @@
       <span class="card-pause-icon" class:stale>{stale ? '❚❚' : '❚❚'}</span>
     {/if}
   </div>
+
+  {#if otherBoards.length > 0}
+    <div class="card-actions">
+      <div class="move-wrap">
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <button class="move-btn" on:click|stopPropagation={() => showMoveTo = !showMoveTo} title="Move to board">→</button>
+        {#if showMoveTo}
+          <div class="move-menu">
+            {#each otherBoards as b (b.id)}
+              <!-- svelte-ignore a11y-click-events-have-key-events -->
+              <div class="move-option" on:click|stopPropagation={() => moveTo(b.id)}>
+                <span class="move-dot" style="background:{b.color}"></span>
+                {b.name}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -87,4 +121,50 @@
   .card-pause-icon.stale { color: var(--coral); }
   .card-subtask-meta { color: var(--ink-3); font-size: 10px; }
   .card-subtask-meta.subtask-overdue { color: var(--coral); font-weight: 500; }
+
+  .card-actions {
+    display: none;
+    position: absolute;
+    top: 7px;
+    right: 8px;
+  }
+  .card:hover .card-actions { display: flex; }
+
+  .move-wrap { position: relative; }
+  .move-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--ink-3);
+    line-height: 1.6;
+  }
+  .move-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+
+  .move-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    z-index: 200;
+    min-width: 150px;
+    padding: 4px;
+  }
+  .move-option {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .move-option:hover { background: var(--surface-2); color: var(--ink); }
+  .move-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 </style>
