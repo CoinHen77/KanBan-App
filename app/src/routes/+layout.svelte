@@ -1,6 +1,6 @@
 <script>
   import '../app.css';
-  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard } from '$lib/store.js';
+  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard } from '$lib/store.js';
   import { BOARD_COLORS, effectiveColumn } from '$lib/logic.js';
 
   let newBoardName = '';
@@ -209,6 +209,12 @@
   </main>
 </div>
 
+{#if $appLoading}
+  <div class="app-loading">
+    <div class="loading-spinner"></div>
+  </div>
+{/if}
+
 <!-- Board modal -->
 {#if $showBoardModal}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -258,6 +264,25 @@
 
 <style>
   .app { display: flex; height: 100vh; }
+
+  .app-loading {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .loading-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .sidebar {
     min-width: 220px;

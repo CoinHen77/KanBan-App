@@ -1,45 +1,19 @@
 import { writable, derived, get } from 'svelte/store';
-import { seedCards, effectiveColumn, uid, todayISO, tomorrowISO, buildNextRecurrence } from './logic.js';
-
-const STORAGE_KEY = 'tasks-app-v2';
-
-// ── Persistence helpers ───────────────────────────────────────────
-
-function loadFromStorage() {
-  try {
-    if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return null;
-}
-
-function persistToStorage(data) {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
-  } catch {}
-}
+import { auth, db } from './firebase.js';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import {
+  collection, doc, onSnapshot,
+  setDoc, updateDoc, deleteDoc, writeBatch, getDocs,
+} from 'firebase/firestore';
+import { effectiveColumn, uid, todayISO, buildNextRecurrence, seedCards } from './logic.js';
 
 // ── Core stores ───────────────────────────────────────────────────
 
-const saved = loadFromStorage();
-const seed = saved || seedCards();
-
-export const boards = writable(seed.boards || []);
-export const cards = writable(seed.cards || []);
+export const boards = writable(/** @type {import('./types').Board[]} */ ([]));
+export const cards = writable(/** @type {import('./types').Card[]} */ ([]));
 export const templates = writable(/** @type {import('./types').Template[]} */ ([]));
-
-// Sync writes to localStorage
-boards.subscribe(b => {
-  const c = get(cards);
-  persistToStorage({ boards: b, cards: c });
-});
-cards.subscribe(c => {
-  const b = get(boards);
-  persistToStorage({ boards: b, cards: c });
-});
+export const appLoading = writable(true);
+export const currentUserId = writable(/** @type {string|null} */ (null));
 
 // ── Navigation state ──────────────────────────────────────────────
 
@@ -60,18 +34,98 @@ export const editingBoardId = writable(/** @type {string|null} */ (null));
 export const todayCards = derived(cards, $cards =>
   $cards.filter(c => effectiveColumn(c) === 'today')
 );
-
 export const todayCount = derived(todayCards, $tc => $tc.length);
-
 export const waitingCount = derived(cards, $cards =>
   $cards.filter(c => c.column !== 'done' && c.waiting_on).length
 );
 
+// ── Firestore ref helpers ─────────────────────────────────────────
+
+const LEGACY_KEY = 'tasks-app-v2';
+
+function boardsCol(userId) { return collection(db, 'users', userId, 'boards'); }
+function cardsCol(userId)  { return collection(db, 'users', userId, 'cards'); }
+function boardDoc(userId, id) { return doc(db, 'users', userId, 'boards', id); }
+function cardDoc(userId, id)  { return doc(db, 'users', userId, 'cards', id); }
+
+function me() { return get(currentUserId); }
+
+// Remove undefined values so Firestore doesn't reject the write
+function clean(obj) {
+  return JSON.parse(JSON.stringify(obj, (_, v) => v === undefined ? null : v));
+}
+
+// ── First-run: migrate localStorage or seed ───────────────────────
+
+async function ensureData(userId) {
+  const snap = await getDocs(boardsCol(userId));
+  if (!snap.empty) {
+    localStorage.removeItem(LEGACY_KEY);
+    return;
+  }
+
+  const raw = localStorage.getItem(LEGACY_KEY);
+  const source = raw ? JSON.parse(raw) : seedCards();
+
+  const batch = writeBatch(db);
+  for (const b of source.boards || []) batch.set(boardDoc(userId, b.id), clean(b));
+  for (const c of source.cards  || []) batch.set(cardDoc(userId, c.id),  clean(c));
+  await batch.commit();
+  localStorage.removeItem(LEGACY_KEY);
+}
+
+// ── Realtime listeners ────────────────────────────────────────────
+
+let unsubBoards = null;
+let unsubCards  = null;
+
+function setupListeners(userId) {
+  if (unsubBoards) unsubBoards();
+  if (unsubCards)  unsubCards();
+
+  let boardsReady = false;
+  let cardsReady  = false;
+
+  function checkReady() {
+    if (boardsReady && cardsReady) appLoading.set(false);
+  }
+
+  unsubBoards = onSnapshot(boardsCol(userId), snap => {
+    const data = snap.docs
+      .map(d => ({ ...d.data(), id: d.id }))
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    boards.set(data);
+    boardsReady = true;
+    checkReady();
+  });
+
+  unsubCards = onSnapshot(cardsCol(userId), snap => {
+    cards.set(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    cardsReady = true;
+    checkReady();
+  });
+}
+
+// ── Auth ──────────────────────────────────────────────────────────
+
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    currentUserId.set(user.uid);
+    await ensureData(user.uid);
+    setupListeners(user.uid);
+  } else {
+    signInAnonymously(auth).catch(console.error);
+  }
+});
+
 // ── Card actions ──────────────────────────────────────────────────
 
 export function createCard(boardId) {
-  const card = {
-    id: uid(),
+  const userId = me();
+  if (!userId) return;
+  const id = uid();
+  const card = clean({
+    id,
     board_id: boardId,
     title: '',
     notes: '',
@@ -83,53 +137,62 @@ export function createCard(boardId) {
     template_id: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  };
+  });
+  // Optimistic
   cards.update(cs => [...cs, card]);
-  editingCardId.set(card.id);
-  return card.id;
+  // Persist
+  setDoc(cardDoc(userId, id), card);
+  editingCardId.set(id);
+  return id;
 }
 
 export function updateCard(id, patch) {
-  cards.update(cs =>
-    cs.map(c => c.id === id ? { ...c, ...patch, updated_at: new Date().toISOString() } : c)
-  );
+  const userId = me();
+  if (!userId) return;
+  const ts = new Date().toISOString();
+  const cleaned = clean(patch);
+  cards.update(cs => cs.map(c => c.id === id ? { ...c, ...cleaned, updated_at: ts } : c));
+  updateDoc(cardDoc(userId, id), { ...cleaned, updated_at: ts });
 }
 
 export function deleteCard(id) {
+  const userId = me();
+  if (!userId) return;
   cards.update(cs => cs.filter(c => c.id !== id));
+  deleteDoc(cardDoc(userId, id));
 }
 
 export function markCardDone(id) {
+  const userId = me();
+  if (!userId) return;
+  const card = get(cards).find(c => c.id === id);
+  if (!card) return;
+
+  const ts = new Date().toISOString();
+  const patch = {
+    column: 'done',
+    completed_at: todayISO(),
+    updated_at: ts,
+    ...(!card.template_id && card.recurrence ? { template_id: id } : {}),
+  };
+
+  const completedCard = { ...card, ...patch };
+  const next = completedCard.recurrence
+    ? buildNextRecurrence(completedCard, get(cards))
+    : null;
+
+  // Optimistic
   cards.update(cs => {
-    const card = cs.find(c => c.id === id);
-    if (!card) return cs;
-
-    const updated = cs.map(c =>
-      c.id === id
-        ? { ...c, column: 'done', completed_at: todayISO(), updated_at: new Date().toISOString() }
-        : c
-    );
-
-    // Ensure template_id is set before spawning
-    const completedCard = { ...card, column: 'done', completed_at: todayISO() };
-    if (!completedCard.template_id && completedCard.recurrence) {
-      completedCard.template_id = completedCard.id;
-      // Also patch the stored card
-      const idx = updated.findIndex(c => c.id === id);
-      if (idx >= 0) updated[idx] = { ...updated[idx], template_id: completedCard.id };
-    }
-
-    if (completedCard.recurrence) {
-      const next = buildNextRecurrence(completedCard, updated);
-      if (next) {
-        next.updated_at = new Date().toISOString();
-        next.created_at = new Date().toISOString();
-        updated.push(next);
-      }
-    }
-
+    let updated = cs.map(c => c.id === id ? { ...c, ...patch } : c);
+    if (next) updated = [...updated, { ...next, created_at: ts, updated_at: ts }];
     return updated;
   });
+
+  // Persist
+  const batch = writeBatch(db);
+  batch.update(cardDoc(userId, id), patch);
+  if (next) batch.set(cardDoc(userId, next.id), clean({ ...next, created_at: ts, updated_at: ts }));
+  batch.commit();
 }
 
 export function reopenCard(id) {
@@ -137,67 +200,74 @@ export function reopenCard(id) {
 }
 
 export function moveCard(id, col) {
-  cards.update(cs => {
-    const card = cs.find(c => c.id === id);
-    if (!card) return cs;
+  const userId = me();
+  if (!userId) return;
+  const card = get(cards).find(c => c.id === id);
+  if (!card) return;
 
-    let patch = {};
+  let patch = {};
 
-    if (col === 'done') {
-      patch = { column: 'done', completed_at: todayISO() };
-      const completedCard = { ...card, ...patch };
-      if (!completedCard.template_id && completedCard.recurrence) {
-        completedCard.template_id = completedCard.id;
-        patch.template_id = completedCard.id;
-      }
-      const updated = cs.map(c => c.id === id ? { ...c, ...patch, updated_at: new Date().toISOString() } : c);
-      if (completedCard.recurrence) {
-        const next = buildNextRecurrence(completedCard, updated);
-        if (next) {
-          next.updated_at = new Date().toISOString();
-          next.created_at = new Date().toISOString();
-          updated.push(next);
-        }
-      }
+  if (col === 'done') {
+    patch = {
+      column: 'done',
+      completed_at: todayISO(),
+      ...(!card.template_id && card.recurrence ? { template_id: id } : {}),
+    };
+    const completedCard = { ...card, ...patch };
+    const next = completedCard.recurrence
+      ? buildNextRecurrence(completedCard, get(cards))
+      : null;
+    const ts = new Date().toISOString();
+
+    cards.update(cs => {
+      let updated = cs.map(c => c.id === id ? { ...c, ...patch, updated_at: ts } : c);
+      if (next) updated = [...updated, { ...next, created_at: ts, updated_at: ts }];
       return updated;
-    }
+    });
 
-    if (col === 'progress') {
-      patch = { column: 'progress', completed_at: null };
-    } else if (col === 'todo') {
-      patch = { column: 'todo', completed_at: null };
-    } else if (col === 'today') {
-      // Moving into today: set due_date to today so effectiveColumn returns 'today'
-      patch = { column: 'todo', due_date: todayISO(), completed_at: null };
-    }
+    const batch = writeBatch(db);
+    batch.update(cardDoc(userId, id), { ...patch, updated_at: ts });
+    if (next) batch.set(cardDoc(userId, next.id), clean({ ...next, created_at: ts, updated_at: ts }));
+    batch.commit();
+    return;
+  }
 
-    return cs.map(c => c.id === id ? { ...c, ...patch, updated_at: new Date().toISOString() } : c);
-  });
+  if (col === 'progress') patch = { column: 'progress', completed_at: null };
+  else if (col === 'todo')  patch = { column: 'todo',     completed_at: null };
+  else if (col === 'today') patch = { column: 'todo', due_date: todayISO(), completed_at: null };
+
+  updateCard(id, patch);
 }
 
 // ── Board actions ─────────────────────────────────────────────────
 
 export function createBoard(name, color, parentId = null) {
-  const b = get(boards);
-  const board = {
-    id: uid(),
+  const userId = me();
+  if (!userId) return;
+  const id = uid();
+  const board = clean({
+    id,
     name: name.trim(),
     color,
     parent_id: parentId || null,
-    sort_order: b.length,
+    sort_order: get(boards).length,
     archived: false,
     updated_at: new Date().toISOString(),
-  };
+  });
   boards.update(bs => [...bs, board]);
+  setDoc(boardDoc(userId, id), board);
   currentView.set('board');
-  currentBoardId.set(board.id);
-  return board.id;
+  currentBoardId.set(id);
+  return id;
 }
 
 export function updateBoard(id, patch) {
-  boards.update(bs =>
-    bs.map(b => b.id === id ? { ...b, ...patch, updated_at: new Date().toISOString() } : b)
-  );
+  const userId = me();
+  if (!userId) return;
+  const ts = new Date().toISOString();
+  const cleaned = clean(patch);
+  boards.update(bs => bs.map(b => b.id === id ? { ...b, ...cleaned, updated_at: ts } : b));
+  updateDoc(boardDoc(userId, id), { ...cleaned, updated_at: ts });
 }
 
 export function archiveBoard(id) {
