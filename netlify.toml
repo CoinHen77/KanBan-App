@@ -3,6 +3,9 @@
   command = "npm run build"
   publish = "build"
 
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+
 [[redirects]]
   from   = "/*"
   to     = "/200.html"
