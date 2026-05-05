@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import '../app.css';
-  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard, currentAuthUid, currentUserId } from '$lib/store.js';
+  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard, currentAuthUid, currentUserId, currentUser, signInWithGoogle, signOutUser } from '$lib/store.js';
   import { BOARD_COLORS, effectiveColumn } from '$lib/logic.js';
 
   onMount(() => {
@@ -207,6 +207,19 @@
     </div>
 
     <div class="sidebar-footer">
+      {#if $currentUser && !$currentUser.isAnonymous}
+        <div class="user-info">
+          {#if $currentUser.photoURL}
+            <img src={$currentUser.photoURL} alt="" class="user-avatar" referrerpolicy="no-referrer" />
+          {/if}
+          <span class="user-name">{$currentUser.displayName || $currentUser.email}</span>
+          <button class="btn-link" on:click={signOutUser} title="Sign out">↩</button>
+        </div>
+      {:else}
+        <button class="btn" style="width: 100%; margin-bottom: 8px;" on:click={signInWithGoogle}>
+          Sign in with Google
+        </button>
+      {/if}
       <button class="btn" style="width: 100%;" on:click={() => showPairingModal.set(true)}>
         Link device
       </button>
@@ -438,6 +451,32 @@
   .new-board { color: var(--ink-3); font-size: 12px; padding: 8px 10px; cursor: pointer; }
   .new-board:hover { color: var(--ink); }
   .sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--line); }
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .user-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .user-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn-link {
+    background: none;
+    border: none;
+    color: var(--ink-3);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
+  .btn-link:hover { color: var(--ink); }
   .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
   @media (max-width: 768px) {

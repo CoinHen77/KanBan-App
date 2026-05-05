@@ -1,6 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import { auth, db } from './firebase.js';
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { signInAnonymously, onAuthStateChanged, signInWithPopup, linkWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
 import { ADOPTED_UID_KEY } from './pairing.js';
 import {
   collection, doc, onSnapshot,
@@ -16,6 +16,7 @@ export const templates = writable(/** @type {import('./types').Template[]} */ ([
 export const appLoading = writable(true);
 export const currentUserId = writable(/** @type {string|null} */ (null));
 export const currentAuthUid = writable(/** @type {string|null} */ (null));
+export const currentUser = writable(/** @type {import('firebase/auth').User|null} */ (null));
 
 // ── Navigation state ──────────────────────────────────────────────
 
@@ -99,10 +100,18 @@ function setupListeners(userId) {
     boards.set(data);
     boardsReady = true;
     checkReady();
+  }, e => {
+    console.error('boards listener error:', e);
+    boardsReady = true;
+    checkReady();
   });
 
   unsubCards = onSnapshot(cardsCol(userId), snap => {
     cards.set(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    cardsReady = true;
+    checkReady();
+  }, e => {
+    console.error('cards listener error:', e);
     cardsReady = true;
     checkReady();
   });
@@ -111,17 +120,44 @@ function setupListeners(userId) {
 // ── Auth ──────────────────────────────────────────────────────────
 
 onAuthStateChanged(auth, async user => {
+  currentUser.set(user);
   if (user) {
     currentAuthUid.set(user.uid);
     const adopted = typeof localStorage !== 'undefined' ? localStorage.getItem(ADOPTED_UID_KEY) : null;
     const effectiveUid = adopted || user.uid;
     currentUserId.set(effectiveUid);
-    await ensureData(effectiveUid);
+    try {
+      await ensureData(effectiveUid);
+    } catch (e) {
+      console.error('ensureData failed:', e);
+    }
     setupListeners(effectiveUid);
   } else {
     signInAnonymously(auth).catch(console.error);
   }
 });
+
+export async function signInWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  const user = auth.currentUser;
+  try {
+    if (user?.isAnonymous) {
+      await linkWithPopup(user, provider);
+    } else {
+      await signInWithPopup(auth, provider);
+    }
+  } catch (e) {
+    if (e.code === 'auth/credential-already-in-use') {
+      await signInWithPopup(auth, provider);
+    } else {
+      throw e;
+    }
+  }
+}
+
+export async function signOutUser() {
+  await signOut(auth);
+}
 
 // ── Card actions ──────────────────────────────────────────────────
 
