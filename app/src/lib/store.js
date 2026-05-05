@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { auth, db } from './firebase.js';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { ADOPTED_UID_KEY } from './pairing.js';
 import {
   collection, doc, onSnapshot,
   setDoc, updateDoc, deleteDoc, writeBatch, getDocs,
@@ -14,6 +15,7 @@ export const cards = writable(/** @type {import('./types').Card[]} */ ([]));
 export const templates = writable(/** @type {import('./types').Template[]} */ ([]));
 export const appLoading = writable(true);
 export const currentUserId = writable(/** @type {string|null} */ (null));
+export const currentAuthUid = writable(/** @type {string|null} */ (null));
 
 // ── Navigation state ──────────────────────────────────────────────
 
@@ -110,9 +112,12 @@ function setupListeners(userId) {
 
 onAuthStateChanged(auth, async user => {
   if (user) {
-    currentUserId.set(user.uid);
-    await ensureData(user.uid);
-    setupListeners(user.uid);
+    currentAuthUid.set(user.uid);
+    const adopted = typeof localStorage !== 'undefined' ? localStorage.getItem(ADOPTED_UID_KEY) : null;
+    const effectiveUid = adopted || user.uid;
+    currentUserId.set(effectiveUid);
+    await ensureData(effectiveUid);
+    setupListeners(effectiveUid);
   } else {
     signInAnonymously(auth).catch(console.error);
   }

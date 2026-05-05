@@ -1,6 +1,6 @@
 <script>
   import '../app.css';
-  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard } from '$lib/store.js';
+  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard, currentAuthUid, currentUserId } from '$lib/store.js';
   import { BOARD_COLORS, effectiveColumn } from '$lib/logic.js';
 
   let newBoardName = '';
@@ -92,6 +92,8 @@
     return activeBoards.filter(b => b.parent_id === parentId);
   }
 
+  $: isLinked = $currentAuthUid && $currentUserId && $currentAuthUid !== $currentUserId;
+
   $: modalTitle = $editingBoardId
     ? (newBoardParentId ? 'Edit sub-board' : 'Edit workflow')
     : (newBoardParentId ? 'New sub-board' : 'New workflow');
@@ -103,7 +105,7 @@
     <div class="sidebar-header">
       <div class="logo">Tasks</div>
       <div class="sync-status">
-        <span class="sync-dot"></span>Local
+        <span class="sync-dot" class:synced={isLinked}></span>{isLinked ? 'Synced' : 'Local'}
       </div>
     </div>
 
@@ -311,10 +313,11 @@
     display: inline-block;
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: var(--green);
+    background: var(--ink-3);
     margin-right: 6px;
     vertical-align: 1px;
   }
+  .sync-dot.synced { background: var(--green); }
   .sidebar-section { padding: 16px 12px 8px; }
   .sidebar-label {
     font-size: 10px;
