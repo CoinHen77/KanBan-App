@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f1ea;
+    --surface: #fbf8f3;
+    --surface-2: #f0ebe1;
+    --ink: #1a1814;
+    --ink-2: #5a554c;
+    --ink-3: #8a8478;
+    --line: #e0d8ca;
+    --line-strong: #c8bfae;
+    --accent: #8b5a3c;
+    --accent-bg: #ede0d3;
+    --amber: #b8862a;
+    --amber-bg: #f4e8c8;
+    --amber-strong: #d4a84a;
+    --coral: #b04a2c;
+    --coral-bg: #f2d9cc;
+    --green: #5a7548;
+    --green-bg: #dde5d0;
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  button { font-family: inherit; font-size: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea, select { font-family: inherit; font-size: inherit; color: inherit; }
+  input:focus, textarea:focus, select:focus { outline: none; }
+
+  /* App layout */
+  .app { display: flex; height: 100vh; }
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .logo {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+    font-style: italic;
+    letter-spacing: -0.5px;
+  }
+  .logo::after {
+    content: '·';
+    color: var(--accent);
+    margin-left: 4px;
+  }
+  .sync-status {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+  .sync-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .sidebar-section {
+    padding: 16px 12px 8px;
+  }
+  .sidebar-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--ink-3);
+    padding: 0 8px 8px;
+    font-weight: 500;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 1px;
+    color: var(--ink-2);
+    font-size: 13px;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface-2); }
+  .nav-item.active {
+    background: var(--accent-bg);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .nav-item .star {
+    font-family: var(--serif);
+    color: var(--accent);
+  }
+  .board-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .nav-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--ink-3);
+    background: var(--surface-2);
+    padding: 1px 6px;
+    border-radius: 8px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .nav-item.active .nav-count {
+    background: rgba(139,90,60,0.15);
+    color: var(--accent);
+  }
+  .new-board {
+    color: var(--ink-3);
+    font-size: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+  }
+  .new-board:hover { color: var(--ink); }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* Main */
+  .main {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .main-header {
+    padding: 24px 32px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--line);
+  }
+  .main-title {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.8px;
+    line-height: 1;
+  }
+  .main-title .em { font-style: italic; color: var(--accent); }
+  .main-subtitle {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-top: 6px;
+    letter-spacing: 0.2px;
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    transition: background 0.1s;
+    letter-spacing: 0.2px;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--surface);
+    border-color: var(--ink);
+  }
+  .btn-primary:hover { background: #2a2820; }
+
+  .board-area {
+    flex: 1;
+    overflow: hidden;
+    padding: 20px 32px 32px;
+  }
+
+  /* Today (super-view) */
+  .today-list {
+    max-width: 720px;
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+  .today-section {
+    margin-bottom: 24px;
+  }
+  .today-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .today-section-label .count {
+    background: var(--surface-2);
+    color: var(--ink-2);
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+  .today-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: border-color 0.1s, transform 0.1s;
+    position: relative;
+  }
+  .today-card:hover {
+    border-color: var(--line-strong);
+  }
+  .today-card.overdue {
+    border-left: 3px solid var(--coral);
+  }
+  .today-card.waiting {
+    border-left: 3px solid var(--amber);
+  }
+  .today-card.overdue.waiting {
+    border-left: 3px solid var(--coral);
+  }
+  .today-card .check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line-strong);
+    flex-shrink: 0;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .today-card .check:hover { border-color: var(--accent); }
+  .today-card .check.done {
+    background: var(--green);
+    border-color: var(--green);
+    position: relative;
+  }
+  .today-card .check.done::after {
+    content: '';
+    position: absolute;
+    top: 4px; left: 5px;
+    width: 4px; height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .today-card .title {
+    flex: 1;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .today-card .title .recur {
+    color: var(--accent);
+    font-size: 11px;
+    margin-left: 6px;
+    font-style: italic;
+    font-family: var(--serif);
+  }
+  .today-card .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .today-card .pause-icon {
+    color: var(--amber);
+    font-size: 13px;
+    line-height: 1;
+  }
+  .pause-icon.stale { color: var(--coral); }
+  .today-card .pill {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .today-card .overdue-tag {
+    font-size: 10px;
+    color: var(--coral);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  /* Board (kanban columns) */
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    height: 100%;
+  }
+  .column {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .column.drop-target {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .column-head {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .column-name {
+    font-family: var(--serif);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+  }
+  .column-name.italic { font-style: italic; }
+  .column-count {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .column-body {
+    padding: 8px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .column-add {
+    padding: 8px 12px;
+    color: var(--ink-3);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px dashed transparent;
+    margin: 4px;
+    text-align: center;
+  }
+  .column-add:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color 0.1s, transform 0.1s;
+    position: relative;
+  }
+  .card:hover { border-color: var(--line-strong); }
+  .card.dragging { opacity: 0.4; }
+  .card.waiting { border-left: 2px solid var(--amber); }
+  .card.waiting.stale { border-left: 2px solid var(--coral); }
+  .card.overdue { border-left: 2px solid var(--coral); }
+  .card.done .card-title { color: var(--ink-3); text-decoration: line-through; }
+  .card-title {
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 4px;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .card-due {
+    color: var(--ink-3);
+  }
+  .card-due.overdue { color: var(--coral); font-weight: 500; }
+  .card-due.today { color: var(--accent); font-weight: 500; }
+  .card-recur-icon {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--accent);
+    font-size: 11px;
+  }
+  .card-pause-icon {
+    color: var(--amber);
+    margin-left: auto;
+    font-size: 11px;
+  }
+  .card-pause-icon.stale { color: var(--coral); }
+  .card-subtask-meta {
+    color: var(--ink-3);
+    font-size: 10px;
+  }
+
+  /* Empty states */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-3);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,24,20,0.4);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: var(--surface);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--line-strong);
+  }
+  .modal-header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-board-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .modal-close {
+    color: var(--ink-3);
+    font-size: 20px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+  .modal-close:hover { background: var(--surface-2); color: var(--ink); }
+  .modal-body {
+    padding: 18px 22px 22px;
+  }
+  .modal-title-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.4px;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    padding: 0;
+    color: var(--ink);
+  }
+  .modal-title-input::placeholder { color: var(--ink-3); }
+  .field {
+    margin-top: 18px;
+  }
+  .field-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .field-input, .field-textarea, .field-select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .field-input:focus, .field-textarea:focus, .field-select:focus {
+    border-color: var(--line-strong);
+    background: var(--surface);
+  }
+  .field-textarea {
+    resize: vertical;
+    min-height: 60px;
+    font-family: var(--sans);
+  }
+  .field-row {
+    display: flex;
+    gap: 10px;
+  }
+  .field-row > * { flex: 1; }
+
+  .subtask {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .subtask-check {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid var(--line-strong);
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+  }
+  .subtask-check.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .subtask-check.done::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 4px;
+    width: 3px; height: 7px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .subtask-text {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    padding: 2px 0;
+  }
+  .subtask-text.done {
+    text-decoration: line-through;
+    color: var(--ink-3);
+  }
+  .subtask-delete {
+    color: var(--ink-3);
+    font-size: 16px;
+    width: 20px;
+    opacity: 0;
+  }
+  .subtask:hover .subtask-delete { opacity: 1; }
+  .subtask-delete:hover { color: var(--coral); }
+  .add-subtask {
+    color: var(--ink-3);
+    font-size: 12px;
+    padding: 6px 0;
+    cursor: pointer;
+  }
+  .add-subtask:hover { color: var(--ink); }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .btn-danger {
+    margin-left: auto;
+    color: var(--coral);
+    font-size: 11px;
+    border: none;
+  }
+  .btn-danger:hover { text-decoration: underline; }
+
+  .recurrence-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .day-pill {
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    cursor: pointer;
+    color: var(--ink-2);
+  }
+  .day-pill.selected {
+    background: var(--accent);
+    color: var(--surface);
+    border-color: var(--accent);
+  }
+
+  .waiting-since {
+    font-size: 11px;
+    color: var(--amber);
+    margin-top: 4px;
+    font-style: italic;
+    font-family: var(--serif);
+  }
+  .waiting-since.stale { color: var(--coral); }
+
+  /* Filter */
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .filter-pill {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    cursor: pointer;
+    color: var(--ink-2);
+    letter-spacing: 0.2px;
+  }
+  .filter-pill.active {
+    background: var(--ink);
+    color: var(--surface);
+    border-color: var(--ink);
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    body { overflow: auto; }
+    .app { flex-direction: column; height: auto; }
+    .sidebar {
+      width: 100%;
+      flex-direction: row;
+      overflow-x: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+      padding: 8px;
+      gap: 4px;
+    }
+    .sidebar-header { display: none; }
+    .sidebar-section { padding: 0; display: flex; gap: 4px; }
+    .sidebar-label { display: none; }
+    .nav-item { white-space: nowrap; padding: 6px 12px; flex-shrink: 0; }
+    .new-board { display: none; }
+    .sidebar-footer { display: none; }
+    .main { height: auto; }
+    .main-header { padding: 16px 18px 12px; flex-direction: column; align-items: flex-start; gap: 10px; }
+    .main-title { font-size: 24px; }
+    .header-actions { width: 100%; }
+    .header-actions .btn { flex: 1; }
+    .board-area { padding: 12px 18px 18px; }
+    .columns {
+      grid-template-columns: 1fr;
+      gap: 10px;
+      height: auto;
+    }
+    .column { min-height: 100px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">Tasks</div>
+      <div class="sync-status"><span class="sync-dot"></span>Synced just now</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Views</div>
+      <div id="nav-today" class="nav-item active" onclick="setView('today')">
+        <span class="star">★</span>
+        <span>Today</span>
+        <span class="nav-count" id="today-count">0</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Workflows</div>
+      <div id="board-list"></div>
+      <div class="new-board" onclick="newBoard()">+ New workflow</div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn" style="width: 100%;" onclick="showPairing()">Link device</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="main-header">
+      <div>
+        <h1 class="main-title" id="page-title">Today</h1>
+        <div class="main-subtitle" id="page-subtitle">—</div>
+      </div>
+      <div class="header-actions" id="header-actions"></div>
+    </header>
+    <div class="board-area" id="board-area"></div>
+  </main>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+// ============== STATE ==============
+const STORAGE_KEY = 'tasks-app-v1';
+const COLUMNS = ['todo', 'today', 'progress', 'done'];
+const COLUMN_NAMES = { todo: 'To Do List', today: 'Today', progress: 'In Progress', done: 'Done' };
+const BOARD_COLORS = ['#8b5a3c', '#5a7548', '#3c6b8b', '#8b3c5a', '#b8862a', '#5a3c8b', '#3c8b8b', '#8b5a8b'];
+
+let state = loadState();
+let currentView = 'today';
+let currentBoardId = null;
+let editingCard = null;
+let todayFilter = 'all';
+
+function uid() { return Math.random().toString(36).slice(2, 11); }
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function daysBetween(a, b) {
+  const ms = new Date(b) - new Date(a);
+  return Math.floor(ms / 86400000);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return seedState();
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function seedState() {
+  const today = todayISO();
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const longAgo = new Date(Date.now() - 16 * 86400000).toISOString().slice(0, 10);
+
+  const generalId = uid(), clientBId = uid(), clientCId = uid();
+  return {
+    boards: [
+      { id: generalId, name: 'General', color: '#5a554c', archived: false },
+      { id: clientBId, name: 'Client B', color: '#3c6b8b', archived: false },
+      { id: clientCId, name: 'Client C', color: '#5a7548', archived: false },
+    ],
+    cards: [
+      { id: uid(), board_id: clientBId, title: 'Send Q2 deck to Client B', notes: 'Include updated revenue projections and screenshots from the new dashboard build.', column: 'progress', due_date: today, subtasks: [
+        { id: uid(), text: 'Pull latest numbers', done: true },
+        { id: uid(), text: 'Export dashboard screenshots', done: true },
+        { id: uid(), text: 'Write cover email', done: false },
+        { id: uid(), text: 'Schedule send for 5pm', done: false },
+      ], waiting_on: null, recurrence: { freq: 'weekly', days: [4] }, template_id: 'tpl1' },
+      { id: uid(), board_id: clientCId, title: 'Review Client C contract redlines', notes: '', column: 'todo', due_date: today, subtasks: [], waiting_on: { text: 'Sarah (Legal)', since: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10) }, recurrence: null },
+      { id: uid(), board_id: generalId, title: 'Submit weekly timesheet', notes: '', column: 'todo', due_date: today, subtasks: [], waiting_on: null, recurrence: { freq: 'weekly', days: [5] }, template_id: 'tpl2' },
+      { id: uid(), board_id: clientBId, title: 'Draft SOW amendment', notes: 'New scope items from last call.', column: 'todo', due_date: tomorrow, subtasks: [], waiting_on: null, recurrence: null },
+      { id: uid(), board_id: clientBId, title: 'Onboarding doc v2', notes: '', column: 'progress', due_date: nextWeek, subtasks: [
+        { id: uid(), text: 'Outline new sections', done: true },
+        { id: uid(), text: 'First draft', done: false },
+      ], waiting_on: null, recurrence: null },
+      { id: uid(), board_id: clientCId, title: 'Procurement vendor form', notes: '', column: 'todo', due_date: yesterday, subtasks: [], waiting_on: { text: 'Procurement team', since: longAgo }, recurrence: null },
+      { id: uid(), board_id: generalId, title: 'Research competitor pricing', notes: '', column: 'todo', due_date: null, subtasks: [], waiting_on: null, recurrence: null },
+      { id: uid(), board_id: clientBId, title: 'Kickoff notes', notes: '', column: 'done', due_date: yesterday, subtasks: [], waiting_on: null, recurrence: null, completed_at: yesterday },
+    ],
+  };
+}
+
+// ============== DERIVED STATE ==============
+function getBoard(id) { return state.boards.find(b => b.id === id); }
+function getCardsForBoard(boardId) { return state.cards.filter(c => c.board_id === boardId); }
+
+// "Today" is auto-derived: any non-done/non-progress card with due_date <= today,
+// PLUS cards explicitly placed in "today" (manually moved).
+// In Progress and Done are explicit columns. Todo is anything else with no due date or future date.
+function effectiveColumn(card) {
+  if (card.column === 'progress' || card.column === 'done') return card.column;
+  if (card.due_date && card.due_date <= todayISO()) return 'today';
+  return 'todo';
+}
+
+function isOverdue(card) {
+  return card.due_date && card.due_date < todayISO() && card.column !== 'done';
+}
+
+function isWaitingStale(card) {
+  if (!card.waiting_on) return false;
+  return daysBetween(card.waiting_on.since, todayISO()) >= 14;
+}
+
+// ============== RENDER ==============
+function render() {
+  renderSidebar();
+  if (currentView === 'today') renderToday();
+  else renderBoard();
+  saveState();
+}
+
+function renderSidebar() {
+  const todayCards = state.cards.filter(c => effectiveColumn(c) === 'today');
+  document.getElementById('today-count').textContent = todayCards.length;
+  document.getElementById('nav-today').classList.toggle('active', currentView === 'today');
+
+  const list = document.getElementById('board-list');
+  list.innerHTML = '';
+  state.boards.filter(b => !b.archived).forEach(b => {
+    const count = state.cards.filter(c => c.board_id === b.id && c.column !== 'done').length;
+    const div = document.createElement('div');
+    div.className = 'nav-item' + (currentView === 'board' && currentBoardId === b.id ? ' active' : '');
+    div.onclick = () => { currentView = 'board'; currentBoardId = b.id; render(); };
+    div.innerHTML = `
+      <span class="board-dot" style="background: ${b.color}"></span>
+      <span>${escapeHtml(b.name)}</span>
+      <span class="nav-count">${count}</span>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function renderToday() {
+  document.getElementById('page-title').innerHTML = `<span class="em">Today</span> <span style="color: var(--ink-3); font-style: normal; font-weight: 400; font-size: 18px; letter-spacing: 0;">— ${formatDate(todayISO())}</span>`;
+  const cards = state.cards.filter(c => effectiveColumn(c) === 'today');
+  const blocked = cards.filter(c => c.waiting_on).length;
+  document.getElementById('page-subtitle').textContent =
+    `${cards.length} due across ${new Set(cards.map(c => c.board_id)).size} workflow${new Set(cards.map(c => c.board_id)).size === 1 ? '' : 's'}` +
+    (blocked > 0 ? ` · ${blocked} waiting` : '');
+
+  document.getElementById('header-actions').innerHTML = `
+    <button class="btn btn-primary" onclick="newCard()">+ New task</button>
+  `;
+
+  const overdue = cards.filter(c => isOverdue(c));
+  const dueToday = cards.filter(c => !isOverdue(c));
+
+  let visibleCards = cards;
+  if (todayFilter === 'blocked') visibleCards = cards.filter(c => c.waiting_on);
+
+  let html = `
+    <div class="today-list">
+      <div class="filter-bar">
+        <button class="filter-pill ${todayFilter === 'all' ? 'active' : ''}" onclick="setTodayFilter('all')">All (${cards.length})</button>
+        <button class="filter-pill ${todayFilter === 'blocked' ? 'active' : ''}" onclick="setTodayFilter('blocked')">Waiting on (${blocked})</button>
+      </div>
+  `;
+
+  if (todayFilter === 'all') {
+    if (overdue.length) {
+      html += `<div class="today-section">
+        <div class="today-section-label">Overdue <span class="count">${overdue.length}</span></div>
+        ${overdue.map(renderTodayCard).join('')}
+      </div>`;
+    }
+    if (dueToday.length) {
+      html += `<div class="today-section">
+        <div class="today-section-label">Due today <span class="count">${dueToday.length}</span></div>
+        ${dueToday.map(renderTodayCard).join('')}
+      </div>`;
+    }
+    if (cards.length === 0) {
+      html += `<div class="empty">A clear day. Nothing due.</div>`;
+    }
+  } else {
+    if (visibleCards.length === 0) {
+      html += `<div class="empty">Nothing waiting on anyone.</div>`;
+    } else {
+      html += `<div class="today-section">${visibleCards.map(renderTodayCard).join('')}</div>`;
+    }
+  }
+
+  // Up next preview
+  if (todayFilter === 'all') {
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const upNext = state.cards.filter(c =>
+      c.column !== 'done' && c.column !== 'progress' &&
+      c.due_date === tomorrow
+    );
+    if (upNext.length) {
+      html += `<div class="today-section" style="opacity: 0.7;">
+        <div class="today-section-label">Up next — tomorrow <span class="count">${upNext.length}</span></div>
+        ${upNext.map(renderTodayCard).join('')}
+      </div>`;
+    }
+  }
+
+  html += `</div>`;
+  document.getElementById('board-area').innerHTML = html;
+}
+
+function renderTodayCard(c) {
+  const board = getBoard(c.board_id);
+  const overdue = isOverdue(c);
+  const stale = isWaitingStale(c);
+  const overdueDays = overdue ? daysBetween(c.due_date, todayISO()) : 0;
+  const recurMark = c.template_id || c.recurrence ? `<span class="recur">↻ recurring</span>` : '';
+  const pause = c.waiting_on ? `<span class="pause-icon ${stale ? 'stale' : ''}" title="Waiting on ${escapeHtml(c.waiting_on.text)}">❚❚</span>` : '';
+  const overdueTag = overdue ? `<span class="overdue-tag">${overdueDays}d overdue</span>` : '';
+  const cls = ['today-card'];
+  if (overdue) cls.push('overdue');
+  if (c.waiting_on) cls.push('waiting');
+
+  return `
+    <div class="${cls.join(' ')}" onclick="openCard('${c.id}')">
+      <div class="check ${c.column === 'done' ? 'done' : ''}" onclick="event.stopPropagation(); toggleDone('${c.id}')"></div>
+      <div class="title">${escapeHtml(c.title)}${recurMark}</div>
+      <div class="meta">
+        ${pause}
+        ${overdueTag}
+        <span class="pill"><span style="width: 6px; height: 6px; border-radius: 50%; background: ${board.color}"></span>${escapeHtml(board.name)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderBoard() {
+  const board = getBoard(currentBoardId);
+  if (!board) { currentView = 'today'; render(); return; }
+
+  document.getElementById('page-title').innerHTML = `${escapeHtml(board.name)}`;
+  const boardCards = getCardsForBoard(board.id);
+  const recurringCount = boardCards.filter(c => c.recurrence || c.template_id).length;
+  const activeCount = boardCards.filter(c => c.column !== 'done').length;
+  document.getElementById('page-subtitle').textContent = `${activeCount} active${recurringCount ? ` · ${recurringCount} recurring` : ''}`;
+
+  document.getElementById('header-actions').innerHTML = `
+    <button class="btn" onclick="renameBoard('${board.id}')">Rename</button>
+    <button class="btn btn-primary" onclick="newCard('${board.id}')">+ New task</button>
+  `;
+
+  const grouped = { todo: [], today: [], progress: [], done: [] };
+  boardCards.forEach(c => {
+    grouped[effectiveColumn(c)].push(c);
+  });
+
+  // Sort: todo by due date asc (undated last), today by due date asc, others by recency
+  grouped.todo.sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
+  grouped.today.sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+  grouped.done.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
+
+  const html = `
+    <div class="columns">
+      ${COLUMNS.map(col => `
+        <div class="column" data-col="${col}" ondragover="onDragOver(event, '${col}')" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${col}')">
+          <div class="column-head">
+            <div class="column-name ${col === 'today' ? 'italic' : ''}">${COLUMN_NAMES[col]}</div>
+            <div class="column-count">${grouped[col].length}</div>
+          </div>
+          <div class="column-body">
+            ${grouped[col].map(c => renderBoardCard(c)).join('')}
+            ${col === 'todo' ? `<div class="column-add" onclick="newCard('${board.id}')">+ Add task</div>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  document.getElementById('board-area').innerHTML = html;
+}
+
+function renderBoardCard(c) {
+  const overdue = isOverdue(c);
+  const stale = isWaitingStale(c);
+  const cls = ['card'];
+  if (c.waiting_on) { cls.push('waiting'); if (stale) cls.push('stale'); }
+  if (overdue && c.column !== 'done') cls.push('overdue');
+  if (c.column === 'done') cls.push('done');
+
+  const dueLabel = c.due_date ? formatDateRel(c.due_date) : '';
+  const dueClass = !c.due_date ? '' : (overdue ? 'overdue' : (c.due_date === todayISO() ? 'today' : ''));
+  const subtaskMeta = c.subtasks.length ? `<span class="card-subtask-meta">${c.subtasks.filter(s => s.done).length}/${c.subtasks.length}</span>` : '';
+  const recur = (c.recurrence || c.template_id) ? `<span class="card-recur-icon">↻</span>` : '';
+  const pause = c.waiting_on ? `<span class="card-pause-icon ${stale ? 'stale' : ''}" title="Waiting on ${escapeHtml(c.waiting_on.text)}">❚❚</span>` : '';
+
+  return `
+    <div class="${cls.join(' ')}" draggable="true" data-card="${c.id}"
+         ondragstart="onDragStart(event, '${c.id}')" ondragend="onDragEnd(event)"
+         onclick="openCard('${c.id}')">
+      <div class="card-title">${escapeHtml(c.title)}</div>
+      <div class="card-meta">
+        ${dueLabel ? `<span class="card-due ${dueClass}">${dueLabel}</span>` : ''}
+        ${subtaskMeta}
+        ${recur}
+        ${pause}
+      </div>
+    </div>
+  `;
+}
+
+// ============== INTERACTIONS ==============
+function setView(v) {
+  currentView = v;
+  if (v === 'today') currentBoardId = null;
+  render();
+}
+
+function setTodayFilter(f) {
+  todayFilter = f;
+  render();
+}
+
+function newBoard() {
+  const name = prompt('Workflow name (e.g., "Client D"):');
+  if (!name || !name.trim()) return;
+  const used = state.boards.map(b => b.color);
+  const color = BOARD_COLORS.find(c => !used.includes(c)) || BOARD_COLORS[state.boards.length % BOARD_COLORS.length];
+  const board = { id: uid(), name: name.trim(), color, archived: false };
+  state.boards.push(board);
+  currentView = 'board';
+  currentBoardId = board.id;
+  render();
+}
+
+function renameBoard(id) {
+  const b = getBoard(id);
+  const name = prompt('Workflow name:', b.name);
+  if (name && name.trim()) { b.name = name.trim(); render(); }
+}
+
+function newCard(boardId) {
+  // If on Today view and no boardId, default to first board
+  if (!boardId) boardId = currentBoardId || state.boards[0]?.id;
+  if (!boardId) { alert('Create a workflow first.'); return; }
+  const card = {
+    id: uid(),
+    board_id: boardId,
+    title: '',
+    notes: '',
+    column: 'todo',
+    due_date: null,
+    subtasks: [],
+    waiting_on: null,
+    recurrence: null,
+  };
+  state.cards.push(card);
+  editingCard = card.id;
+  openCardModal();
+}
+
+function openCard(id) {
+  editingCard = id;
+  openCardModal();
+}
+
+function toggleDone(id) {
+  const c = state.cards.find(x => x.id === id);
+  if (!c) return;
+  if (c.column === 'done') {
+    c.column = 'todo';
+    delete c.completed_at;
+  } else {
+    c.column = 'done';
+    c.completed_at = todayISO();
+    // If recurring, spawn next instance
+    if (c.recurrence) spawnNextRecurrence(c);
+  }
+  render();
+}
+
+function spawnNextRecurrence(card) {
+  const next = computeNextDueDate(card.due_date || todayISO(), card.recurrence);
+  if (!next) return;
+  // Don't double-spawn
+  const exists = state.cards.find(c =>
+    c.template_id === (card.template_id || card.id) &&
+    c.due_date === next && c.column !== 'done'
+  );
+  if (exists) return;
+  const tplId = card.template_id || card.id;
+  if (!card.template_id) card.template_id = tplId;
+  state.cards.push({
+    id: uid(),
+    board_id: card.board_id,
+    title: card.title,
+    notes: card.notes,
+    column: 'todo',
+    due_date: next,
+    subtasks: card.subtasks.map(s => ({ id: uid(), text: s.text, done: false })),
+    waiting_on: null,
+    recurrence: card.recurrence,
+    template_id: tplId,
+  });
+}
+
+function computeNextDueDate(from, rec) {
+  const start = new Date(from + 'T00:00:00');
+  if (rec.freq === 'daily') {
+    start.setDate(start.getDate() + 1);
+    return start.toISOString().slice(0, 10);
+  }
+  if (rec.freq === 'weekly') {
+    const days = (rec.days && rec.days.length) ? rec.days.slice().sort((a,b)=>a-b) : [start.getDay()];
+    // Find next day in `days` after start
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      if (days.includes(d.getDay())) return d.toISOString().slice(0, 10);
+    }
+  }
+  if (rec.freq === 'monthly') {
+    const d = new Date(start);
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+// ============== DRAG & DROP ==============
+let dragCardId = null;
+function onDragStart(e, id) { dragCardId = id; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+function onDragEnd(e) { e.target.classList.remove('dragging'); }
+function onDragOver(e, col) { e.preventDefault(); e.currentTarget.classList.add('drop-target'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('drop-target'); }
+function onDrop(e, col) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-target');
+  if (!dragCardId) return;
+  moveCard(dragCardId, col);
+  dragCardId = null;
+}
+
+function moveCard(id, col) {
+  const c = state.cards.find(x => x.id === id);
+  if (!c) return;
+
+  // Special case: dropping into "today" but card has no due date or future date
+  if (col === 'today' && (!c.due_date || c.due_date > todayISO())) {
+    c.column = 'today';
+    c.due_date = todayISO();
+  }
+  // Dropping into "todo" from "today" — needs a future date
+  else if (col === 'todo' && effectiveColumn(c) === 'today') {
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const newDate = prompt('Reschedule to (YYYY-MM-DD), or leave blank to remove due date:', tomorrow);
+    if (newDate === null) return;
+    c.due_date = newDate.trim() || null;
+    c.column = 'todo';
+  }
+  else if (col === 'done') {
+    c.column = 'done';
+    c.completed_at = todayISO();
+    if (c.recurrence) spawnNextRecurrence(c);
+  }
+  else {
+    c.column = col;
+    if (col !== 'done') delete c.completed_at;
+  }
+  render();
+}
+
+// ============== MODAL ==============
+function openCardModal() {
+  const c = state.cards.find(x => x.id === editingCard);
+  if (!c) return;
+  const board = getBoard(c.board_id);
+  const root = document.getElementById('modal-root');
+
+  const recur = c.recurrence || { freq: 'none', days: [] };
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  root.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-board-tag">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${board.color}"></span>
+            <select id="card-board" class="field-select" style="border: none; background: transparent; padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; cursor: pointer;">
+              ${state.boards.filter(b => !b.archived).map(b => `<option value="${b.id}" ${b.id === c.board_id ? 'selected' : ''}>${escapeHtml(b.name)}</option>`).join('')}
+            </select>
+            <span style="margin: 0 4px; color: var(--ink-3);">·</span>
+            <span>${COLUMN_NAMES[effectiveColumn(c)]}</span>
+          </div>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <input id="card-title" class="modal-title-input" placeholder="Task name…" value="${escapeAttr(c.title)}" autofocus>
+
+          <div class="field">
+            <div class="field-label">Notes</div>
+            <textarea id="card-notes" class="field-textarea" placeholder="Add detail, context, links…">${escapeHtml(c.notes || '')}</textarea>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Due date</div>
+              <input id="card-due" type="date" class="field-input" value="${c.due_date || ''}">
+            </div>
+            <div class="field">
+              <div class="field-label">Recurrence</div>
+              <select id="card-recur" class="field-select" onchange="updateRecurUI()">
+                <option value="none" ${recur.freq === 'none' ? 'selected' : ''}>None</option>
+                <option value="daily" ${recur.freq === 'daily' ? 'selected' : ''}>Daily</option>
+                <option value="weekly" ${recur.freq === 'weekly' ? 'selected' : ''}>Weekly</option>
+                <option value="monthly" ${recur.freq === 'monthly' ? 'selected' : ''}>Monthly</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="recur-days-row" class="field" style="display: ${recur.freq === 'weekly' ? 'block' : 'none'};">
+            <div class="field-label">On these days</div>
+            <div class="recurrence-row">
+              ${dayNames.map((d, i) => `<div class="day-pill ${recur.days && recur.days.includes(i) ? 'selected' : ''}" data-day="${i}" onclick="toggleDay(${i})">${d}</div>`).join('')}
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">Waiting on <span style="text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink-3);">— blocker, person, dependency</span></div>
+            <input id="card-waiting" class="field-input" placeholder="e.g., Sarah from legal, procurement approval…" value="${escapeAttr(c.waiting_on?.text || '')}">
+            ${c.waiting_on ? `<div class="waiting-since ${isWaitingStale(c) ? 'stale' : ''}">Waiting ${daysBetween(c.waiting_on.since, todayISO())} day${daysBetween(c.waiting_on.since, todayISO()) === 1 ? '' : 's'}${isWaitingStale(c) ? ' — getting stale' : ''}</div>` : ''}
+          </div>
+
+          <div class="field">
+            <div class="field-label">Subtasks ${c.subtasks.length ? `<span style="color: var(--ink-3); font-weight: 400; letter-spacing: 0; text-transform: none;">${c.subtasks.filter(s => s.done).length} of ${c.subtasks.length}</span>` : ''}</div>
+            <div id="subtask-list">
+              ${c.subtasks.map(s => `
+                <div class="subtask" data-sub="${s.id}">
+                  <div class="subtask-check ${s.done ? 'done' : ''}" onclick="toggleSubtask('${s.id}')"></div>
+                  <input class="subtask-text ${s.done ? 'done' : ''}" value="${escapeAttr(s.text)}" data-sub="${s.id}" oninput="updateSubtaskText('${s.id}', this.value)">
+                  <button class="subtask-delete" onclick="deleteSubtask('${s.id}')">×</button>
+                </div>
+              `).join('')}
+            </div>
+            <div class="add-subtask" onclick="addSubtask()">+ Add subtask</div>
+          </div>
+
+          <div class="modal-actions">
+            ${c.column === 'done'
+              ? `<button class="btn" onclick="setColumn('todo')">Reopen</button>`
+              : `<button class="btn" onclick="setColumn('progress')">${effectiveColumn(c) === 'progress' ? '✓ In Progress' : 'Move to In Progress'}</button>
+                 <button class="btn btn-primary" onclick="markDone()">Mark done</button>`
+            }
+            <button class="btn-danger" onclick="deleteCard()">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Auto-save listeners
+  document.getElementById('card-title').addEventListener('input', e => {
+    const c = state.cards.find(x => x.id === editingCard);
+    c.title = e.target.value;
+  });
+  document.getElementById('card-notes').addEventListener('input', e => {
+    const c = state.cards.find(x => x.id === editingCard);
+    c.notes = e.target.value;
+  });
+  document.getElementById('card-due').addEventListener('change', e => {
+    const c = state.cards.find(x => x.id === editingCard);
+    c.due_date = e.target.value || null;
+  });
+  document.getElementById('card-board').addEventListener('change', e => {
+    const c = state.cards.find(x => x.id === editingCard);
+    c.board_id = e.target.value;
+  });
+  document.getElementById('card-waiting').addEventListener('input', e => {
+    const c = state.cards.find(x => x.id === editingCard);
+    const txt = e.target.value.trim();
+    if (txt) {
+      if (!c.waiting_on) c.waiting_on = { text: txt, since: todayISO() };
+      else c.waiting_on.text = txt;
+    } else {
+      c.waiting_on = null;
+    }
+  });
+}
+
+function closeModal() {
+  // Drop empty cards
+  if (editingCard) {
+    const c = state.cards.find(x => x.id === editingCard);
+    if (c && !c.title.trim()) {
+      state.cards = state.cards.filter(x => x.id !== editingCard);
+    }
+  }
+  editingCard = null;
+  document.getElementById('modal-root').innerHTML = '';
+  render();
+}
+
+function updateRecurUI() {
+  const c = state.cards.find(x => x.id === editingCard);
+  const freq = document.getElementById('card-recur').value;
+  if (freq === 'none') c.recurrence = null;
+  else c.recurrence = { freq, days: c.recurrence?.days || [new Date().getDay()] };
+  document.getElementById('recur-days-row').style.display = freq === 'weekly' ? 'block' : 'none';
+}
+
+function toggleDay(d) {
+  const c = state.cards.find(x => x.id === editingCard);
+  if (!c.recurrence) c.recurrence = { freq: 'weekly', days: [] };
+  const days = c.recurrence.days || [];
+  const idx = days.indexOf(d);
+  if (idx >= 0) days.splice(idx, 1);
+  else days.push(d);
+  c.recurrence.days = days;
+  document.querySelector(`.day-pill[data-day="${d}"]`).classList.toggle('selected');
+}
+
+function toggleSubtask(id) {
+  const c = state.cards.find(x => x.id === editingCard);
+  const s = c.subtasks.find(x => x.id === id);
+  s.done = !s.done;
+  openCardModal();
+}
+
+function updateSubtaskText(id, text) {
+  const c = state.cards.find(x => x.id === editingCard);
+  const s = c.subtasks.find(x => x.id === id);
+  s.text = text;
+}
+
+function addSubtask() {
+  const c = state.cards.find(x => x.id === editingCard);
+  c.subtasks.push({ id: uid(), text: '', done: false });
+  openCardModal();
+  // Focus the new subtask input
+  const inputs = document.querySelectorAll('.subtask-text');
+  inputs[inputs.length - 1]?.focus();
+}
+
+function deleteSubtask(id) {
+  const c = state.cards.find(x => x.id === editingCard);
+  c.subtasks = c.subtasks.filter(s => s.id !== id);
+  openCardModal();
+}
+
+function setColumn(col) {
+  const c = state.cards.find(x => x.id === editingCard);
+  c.column = col;
+  if (col !== 'done') delete c.completed_at;
+  closeModal();
+}
+
+function markDone() {
+  const c = state.cards.find(x => x.id === editingCard);
+  c.column = 'done';
+  c.completed_at = todayISO();
+  if (c.recurrence) spawnNextRecurrence(c);
+  closeModal();
+}
+
+function deleteCard() {
+  if (!confirm('Delete this task?')) return;
+  state.cards = state.cards.filter(x => x.id !== editingCard);
+  closeModal();
+}
+
+function showPairing() {
+  const code = Array.from({length: 6}, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*30)]).join('');
+  const formatted = code.slice(0, 3) + '-' + code.slice(3);
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width: 380px;">
+        <div class="modal-header">
+          <div class="modal-board-tag">Link another device</div>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+          <p style="color: var(--ink-2); font-size: 13px; margin-bottom: 18px;">Enter this code on your other device within 5 minutes.</p>
+          <div style="font-family: var(--serif); font-size: 36px; font-weight: 500; letter-spacing: 6px; padding: 22px; background: var(--bg); border-radius: 8px; margin-bottom: 12px;">${formatted}</div>
+          <div style="font-size: 11px; color: var(--ink-3); font-style: italic; font-family: var(--serif);">Expires in 4:59</div>
+          <div style="text-align: left; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2); line-height: 1.6;">
+            <strong style="font-weight: 500; color: var(--ink); display: block; margin-bottom: 4px;">Note</strong>
+            This is a UI mock — sync needs a real Supabase project to fully work. Your data is currently saved locally in this browser only.
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============== UTILITIES ==============
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+function formatDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function formatDateRel(iso) {
+  const today = todayISO();
+  if (iso === today) return 'Today';
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  if (iso === tomorrow) return 'Tomorrow';
+  const days = daysBetween(today, iso);
+  if (days < 0) return `${-days}d overdue`;
+  if (days <= 7) return `In ${days}d`;
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Auto-spawn missing recurring instances on app load
+function checkRecurrences() {
+  state.cards.forEach(c => {
+    if (c.recurrence && c.column === 'done' && c.template_id === undefined) {
+      // Older completed recurring card without template_id — assign one
+      c.template_id = c.id;
+      spawnNextRecurrence(c);
+    }
+  });
+}
+
+// Initial render
+checkRecurrences();
+render();
+</script>
+</body>
+</html>
