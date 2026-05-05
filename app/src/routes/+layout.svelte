@@ -4,11 +4,14 @@
   import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard, currentAuthUid, currentUserId, currentUser, signInWithGoogle, signOutUser } from '$lib/store.js';
   import { BOARD_COLORS, effectiveColumn } from '$lib/logic.js';
 
+  let isOnline = true;
+
   onMount(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .catch(e => console.error('SW registration failed:', e));
     }
+    isOnline = navigator.onLine;
   });
 
   let newBoardName = '';
@@ -106,6 +109,12 @@
     ? (newBoardParentId ? 'Edit sub-board' : 'Edit workflow')
     : (newBoardParentId ? 'New sub-board' : 'New workflow');
 </script>
+
+<svelte:window on:online={() => isOnline = true} on:offline={() => isOnline = false} />
+
+{#if !isOnline}
+  <div class="offline-banner">Offline — changes will sync when reconnected</div>
+{/if}
 
 <div class="app">
   <!-- Sidebar -->
@@ -286,6 +295,20 @@
 {/if}
 
 <style>
+  .offline-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--ink);
+    color: var(--bg);
+    text-align: center;
+    font-size: 12px;
+    padding: 8px;
+    z-index: 999;
+    letter-spacing: 0.2px;
+  }
+
   .app { display: flex; height: 100vh; }
 
   .app-loading {
