@@ -291,3 +291,18 @@ input:focus, textarea:focus, select:focus { outline: none; }
 @media (max-width: 768px) {
   body { overflow: auto; }
 }
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal {
+    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    max-width: 100%;
+  }
+  .modal-header { padding: 14px 16px 12px; }
+  .modal-body { padding: 14px 16px 32px; }
+  .modal-title-input { font-size: 18px; }
+}

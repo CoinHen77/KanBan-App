@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import '../app.css';
-  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard, currentAuthUid, currentUserId, currentUser, signInWithGoogle, signOutUser } from '$lib/store.js';
+  import { boards, cards, currentView, currentBoardId, todayCount, waitingCount, appLoading, editingCardId, showPairingModal, showBoardModal, editingBoardId, createBoard, updateBoard, archiveBoard, currentAuthUid, currentUserId, currentUser, signInWithGoogle, signOutUser, createCard } from '$lib/store.js';
   import { BOARD_COLORS, effectiveColumn } from '$lib/logic.js';
 
   let isOnline = true;
@@ -111,9 +111,35 @@
   $: modalTitle = $editingBoardId
     ? (newBoardParentId ? 'Edit sub-board' : 'Edit workflow')
     : (newBoardParentId ? 'New sub-board' : 'New workflow');
+
+  let showShortcuts = false;
+
+  function handleGlobalKeydown(e) {
+    const tag = document.activeElement?.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (document.activeElement?.isContentEditable) return;
+    if ($editingCardId) return; // CardModal handles its own Escape
+
+    if (e.key === 'Escape') {
+      if ($showBoardModal) { showBoardModal.set(false); return; }
+      if ($showPairingModal) { showPairingModal.set(false); return; }
+      if (showShortcuts) { showShortcuts = false; return; }
+    } else if (e.key === '?') {
+      showShortcuts = !showShortcuts;
+    } else if (e.key === 't' || e.key === 'T') {
+      setView('today');
+    } else if (e.key === 'w' || e.key === 'W') {
+      setView('waiting');
+    } else if (e.key === 'n' || e.key === 'N') {
+      const board = ($currentView === 'board' && $currentBoardId)
+        ? $boards.find(b => b.id === $currentBoardId)
+        : $boards.filter(b => !b.archived)[0];
+      if (board) createCard(board.id);
+    }
+  }
 </script>
 
-<svelte:window on:online={() => isOnline = true} on:offline={() => isOnline = false} />
+<svelte:window on:online={() => isOnline = true} on:offline={() => isOnline = false} on:keydown={handleGlobalKeydown} />
 
 {#if !isOnline}
   <div class="offline-banner">Offline — changes will sync when reconnected</div>
@@ -268,7 +294,28 @@
   </div>
 {/if}
 
-<!-- Board modal -->
+{#if showShortcuts}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="modal-overlay" on:click|self={() => showShortcuts = false}>
+    <div class="modal" style="max-width: 320px;">
+      <div class="modal-header">
+        <span style="font-size: 13px; font-weight: 500;">Keyboard shortcuts</span>
+        <button class="modal-close" on:click={() => showShortcuts = false}>×</button>
+      </div>
+      <div class="modal-body" style="padding: 14px 22px 20px;">
+        <div class="shortcut-list">
+          <div class="shortcut-row"><kbd>N</kbd><span>New task</span></div>
+          <div class="shortcut-row"><kbd>T</kbd><span>Today view</span></div>
+          <div class="shortcut-row"><kbd>W</kbd><span>Waiting On view</span></div>
+          <div class="shortcut-row"><kbd>Esc</kbd><span>Close modal</span></div>
+          <div class="shortcut-row"><kbd>?</kbd><span>Show shortcuts</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
 {#if $showBoardModal}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -534,6 +581,26 @@
   .btn-link:hover { color: var(--ink); }
   .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
+  .shortcut-list { display: flex; flex-direction: column; gap: 10px; }
+  .shortcut-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-2); }
+  .shortcut-row span { flex: 1; }
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-2);
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-2);
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+
   @media (max-width: 768px) {
     .app { flex-direction: column; height: auto; }
     .sidebar {
@@ -542,16 +609,19 @@
       overflow-x: auto;
       border-right: none;
       border-bottom: 1px solid var(--line);
-      padding: 8px;
-      gap: 4px;
+      padding: 6px 8px;
+      gap: 2px;
     }
     .sidebar-header { display: none; }
-    .sidebar-section { padding: 0; display: flex; gap: 4px; }
+    .sidebar-section { padding: 0; display: flex; gap: 2px; flex-shrink: 0; }
     .sidebar-label { display: none; }
-    .nav-item { white-space: nowrap; padding: 6px 12px; flex-shrink: 0; }
-    .child-item { padding-left: 12px; }
+    .nav-item { white-space: nowrap; padding: 0 14px; flex-shrink: 0; min-height: 44px; display: flex; align-items: center; }
+    .child-item { padding-left: 14px; }
     .new-board { display: none; }
+    .archived-toggle { display: none; }
+    .archived-item { display: none; }
     .sidebar-footer { display: none; }
+    .offline-banner { padding: 10px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
     .main { height: auto; }
   }
 </style>

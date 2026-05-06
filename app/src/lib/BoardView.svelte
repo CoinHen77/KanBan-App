@@ -293,8 +293,9 @@
   @media (max-width: 768px) {
     .main-header { padding: 16px 18px 12px; flex-direction: column; align-items: flex-start; gap: 10px; }
     .main-title { font-size: 24px; }
-    .board-area { padding: 12px 18px 18px; }
+    .board-area { padding: 12px 18px 18px; overflow: visible; }
     .columns { grid-template-columns: 1fr; gap: 10px; height: auto; }
     .column { min-height: 100px; }
+    .column-body { overflow: visible; }
   }
 </style>

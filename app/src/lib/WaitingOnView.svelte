@@ -204,6 +204,7 @@
   @media (max-width: 768px) {
     .main-header { padding: 16px 18px 12px; }
     .main-title { font-size: 24px; }
-    .board-area { padding: 12px 18px 18px; }
+    .board-area { padding: 12px 18px 18px; overflow: visible; }
+    .waiting-list { height: auto; overflow: visible; padding-right: 0; max-width: 100%; }
   }
 </style>

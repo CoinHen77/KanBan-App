@@ -449,6 +449,7 @@
     .main-header { padding: 16px 18px 12px; flex-direction: column; align-items: flex-start; gap: 10px; }
     .main-title { font-size: 24px; }
     .header-actions { width: 100%; }
-    .board-area { padding: 12px 18px 18px; }
+    .board-area { padding: 12px 18px 18px; overflow: visible; }
+    .today-list { height: auto; overflow: visible; padding-right: 0; max-width: 100%; }
   }
 </style>
