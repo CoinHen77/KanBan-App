@@ -1,5 +1,5 @@
 <script>
-  import { cards, boards, currentBoardId, currentView, editingCardId, createCard, moveCard, updateCard, editingBoardId, showBoardModal } from './store.js';
+  import { cards, boards, currentBoardId, currentView, editingCardId, createCard, moveCard, updateCard, deleteCard, editingBoardId, showBoardModal } from './store.js';
   import { effectiveColumn, isOverdue, isWaitingStale, sortTodo, sortDone, formatDateRel, todayISO, COLUMN_NAMES } from './logic.js';
   import BoardCard from './BoardCard.svelte';
 
@@ -81,6 +81,13 @@
     editingBoardId.set($currentBoardId);
     showBoardModal.set(true);
   }
+
+  function clearDone() {
+    const count = doneSorted.length;
+    if (!count) return;
+    if (!confirm(`Delete all ${count} completed task${count === 1 ? '' : 's'} on this board?`)) return;
+    doneSorted.forEach(c => deleteCard(c.id));
+  }
 </script>
 
 {#if board}
@@ -116,7 +123,12 @@
         >
           <div class="column-head">
             <div class="column-name" class:italic={col === 'today'}>{COLUMN_NAMES[col]}</div>
-            <div class="column-count">{colCards.length}{col === 'done' && doneOlder.length && !showOlderDone ? ` (+${doneOlder.length})` : ''}</div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              {#if col === 'done' && doneSorted.length > 0}
+                <button class="clear-done-btn" on:click={clearDone} title="Delete all completed">Clear</button>
+              {/if}
+              <div class="column-count">{colCards.length}{col === 'done' && doneOlder.length && !showOlderDone ? ` (+${doneOlder.length})` : ''}</div>
+            </div>
           </div>
           <div class="column-body">
             {#if col === 'todo'}
@@ -263,6 +275,20 @@
     font-family: inherit;
   }
   .show-older:hover { color: var(--ink); }
+  .clear-done-btn {
+    background: none;
+    border: none;
+    font-size: 10px;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 1px 4px;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .column-head:hover .clear-done-btn { opacity: 1; }
+  .clear-done-btn:hover { color: var(--coral); }
 
   @media (max-width: 768px) {
     .main-header { padding: 16px 18px 12px; flex-direction: column; align-items: flex-start; gap: 10px; }

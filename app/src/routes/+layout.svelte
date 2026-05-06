@@ -98,6 +98,9 @@
 
   $: activeBoards = $boards.filter(b => !b.archived);
   $: parentBoards = activeBoards.filter(b => !b.parent_id);
+  $: archivedBoards = $boards.filter(b => b.archived);
+
+  let showArchived = false;
 
   function getChildren(parentId) {
     return activeBoards.filter(b => b.parent_id === parentId);
@@ -213,6 +216,24 @@
       <div class="new-board" on:click={openNewBoard} role="button" tabindex="0" on:keydown={e => e.key === 'Enter' && openNewBoard()}>
         + New workflow
       </div>
+
+      {#if archivedBoards.length > 0}
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div class="archived-toggle" on:click={() => showArchived = !showArchived} role="button" tabindex="0" on:keydown={e => e.key === 'Enter' && (showArchived = !showArchived)}>
+          Archived ({archivedBoards.length}) <span style="font-size:9px;">{showArchived ? '▴' : '▾'}</span>
+        </div>
+        {#if showArchived}
+          {#each archivedBoards as b (b.id)}
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div class="nav-item archived-item">
+              <span class="board-dot" style="background:{b.color}"></span>
+              <span class="board-name-text">{b.name}</span>
+              <button class="board-rename-btn" title="Restore"
+                on:click|stopPropagation={() => { updateBoard(b.id, { archived: false }); setView('board', b.id); }}>↩</button>
+            </div>
+          {/each}
+        {/if}
+      {/if}
     </div>
 
     <div class="sidebar-footer">
@@ -473,6 +494,17 @@
   .nav-count.accent { background: var(--accent-bg); color: var(--accent); }
   .new-board { color: var(--ink-3); font-size: 12px; padding: 8px 10px; cursor: pointer; }
   .new-board:hover { color: var(--ink); }
+  .archived-toggle {
+    color: var(--ink-3);
+    font-size: 11px;
+    padding: 6px 10px;
+    cursor: pointer;
+    margin-top: 4px;
+    user-select: none;
+  }
+  .archived-toggle:hover { color: var(--ink-2); }
+  .archived-item { opacity: 0.5; }
+  .archived-item:hover { opacity: 1; }
   .sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--line); }
   .user-info {
     display: flex;
