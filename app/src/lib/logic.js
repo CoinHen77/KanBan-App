@@ -10,12 +10,18 @@ export const BOARD_COLORS = [
 
 // ── Date helpers ──────────────────────────────────────────────────
 
+function localISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return localISO(new Date());
 }
 
 export function tomorrowISO() {
-  return new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return localISO(d);
 }
 
 /** Days from a → b (positive = b is future) */
@@ -173,10 +179,13 @@ export function formatDateRel(iso) {
 
 export function seedCards() {
   const today = todayISO();
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const yd = new Date(); yd.setDate(yd.getDate() - 1);
+  const yesterday = localISO(yd);
   const tomorrow = tomorrowISO();
-  const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-  const longAgo = new Date(Date.now() - 16 * 86400000).toISOString().slice(0, 10);
+  const nw = new Date(); nw.setDate(nw.getDate() + 7);
+  const nextWeek = localISO(nw);
+  const la = new Date(); la.setDate(la.getDate() - 16);
+  const longAgo = localISO(la);
 
   const generalId = uid(), clientBId = uid(), clientCId = uid();
 
