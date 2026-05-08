@@ -5,9 +5,7 @@
   $: todayCards = $cards.filter(c => effectiveColumn(c) === 'today');
   $: overdue = todayCards.filter(c => isOverdue(c));
   $: dueToday = todayCards.filter(c => !isOverdue(c));
-  $: inProgressToday = $cards.filter(c =>
-    c.column === 'progress' && c.due_date && c.due_date <= todayISO()
-  );
+  $: inProgressCards = $cards.filter(c => c.column === 'progress');
   $: subtasksDueToday = $cards
     .filter(c => c.column !== 'done')
     .flatMap(c =>
@@ -15,13 +13,13 @@
         .filter(s => !s.done && s.due_date && s.due_date <= todayISO())
         .map(s => ({ ...s, parentCard: c }))
     );
-  $: blocked = [...todayCards, ...inProgressToday].filter(c => c.waiting_on);
+  $: blocked = [...todayCards, ...inProgressCards].filter(c => c.waiting_on);
   $: upNext = $cards.filter(c =>
     c.column !== 'done' && c.column !== 'progress' &&
     c.due_date === tomorrowISO()
   );
   $: visible = $todayFilter === 'blocked'
-    ? [...todayCards, ...inProgressToday].filter(c => c.waiting_on)
+    ? [...todayCards, ...inProgressCards].filter(c => c.waiting_on)
     : todayCards;
 
   function getBoard(boardId) {
@@ -76,7 +74,7 @@
       <span class="date-sub">— {formatDateLong(todayISO())}</span>
     </h1>
     <div class="main-subtitle">
-      {todayCards.length} due{inProgressToday.length ? ` · ${inProgressToday.length} in progress` : ''}{subtasksDueToday.length ? ` · ${subtasksDueToday.length} subtask${subtasksDueToday.length === 1 ? '' : 's'}` : ''}{blocked.length ? ` · ${blocked.length} waiting` : ''}
+      {todayCards.length} due{inProgressCards.length ? ` · ${inProgressCards.length} in progress` : ''}{subtasksDueToday.length ? ` · ${subtasksDueToday.length} subtask${subtasksDueToday.length === 1 ? '' : 's'}` : ''}{blocked.length ? ` · ${blocked.length} waiting` : ''}
     </div>
   </div>
   <div class="header-actions">
@@ -181,16 +179,16 @@
         </div>
       {/if}
 
-      {#if todayCards.length === 0 && inProgressToday.length === 0}
+      {#if todayCards.length === 0 && inProgressCards.length === 0}
         <div class="empty">A clear day. Nothing due.</div>
       {/if}
 
-      {#if inProgressToday.length}
+      {#if inProgressCards.length}
         <div class="today-section">
           <div class="today-section-label">
-            In progress <span class="count">{inProgressToday.length}</span>
+            In progress <span class="count">{inProgressCards.length}</span>
           </div>
-          {#each inProgressToday as card (card.id)}
+          {#each inProgressCards as card (card.id)}
             {@const board = getBoard(card.board_id)}
             {@const stale = isWaitingStale(card)}
             <div

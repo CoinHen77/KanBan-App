@@ -238,7 +238,7 @@
           {#if card.column === 'done'}
             <button class="btn" on:click={onReopen}>Reopen</button>
           {:else}
-            <button class="btn" on:click={onMoveProgress}>
+            <button class="btn" on:click={onMoveProgress} disabled={effCol === 'progress'}>
               {effCol === 'progress' ? '✓ In Progress' : 'Move to In Progress'}
             </button>
             <button class="btn btn-primary" on:click={onMarkDone}>Mark Complete</button>

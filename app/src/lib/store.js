@@ -86,6 +86,8 @@ function setupListeners(userId) {
   if (unsubBoards) unsubBoards();
   if (unsubCards)  unsubCards();
 
+  appLoading.set(true);
+
   let boardsReady = false;
   let cardsReady  = false;
 
@@ -125,6 +127,10 @@ onAuthStateChanged(auth, async user => {
     currentAuthUid.set(user.uid);
     const adopted = typeof localStorage !== 'undefined' ? localStorage.getItem(ADOPTED_UID_KEY) : null;
     const effectiveUid = adopted || user.uid;
+    // Reset navigation so a stale board ID from the previous session doesn't
+    // leave the UI stuck on "Board not found" while the new user's data loads.
+    currentView.set('today');
+    currentBoardId.set(null);
     currentUserId.set(effectiveUid);
     try {
       await ensureData(effectiveUid);

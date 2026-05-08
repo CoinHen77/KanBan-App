@@ -1,6 +1,6 @@
 <script>
   import { get } from 'svelte/store';
-  import { currentView, currentBoardId, editingCardId, showPairingModal, boards, createCard, currentAuthUid, currentUserId } from '$lib/store.js';
+  import { currentView, currentBoardId, editingCardId, showPairingModal, currentAuthUid, currentUserId } from '$lib/store.js';
   import { createPairingCode, watchPairingCode, submitPairingCode, cancelPairingCode, unlinkDevice } from '$lib/pairing.js';
   import TodayView from '$lib/TodayView.svelte';
   import BoardView from '$lib/BoardView.svelte';
@@ -99,7 +99,15 @@
     location.reload();
   }
 
-  function closeModal() {
+  // All cleanup runs here, triggered by the store going false — regardless of
+  // whether the modal was closed via X, clicking outside, or Escape in the layout.
+  let _modalWasOpen = false;
+  $: {
+    if (_modalWasOpen && !$showPairingModal) _cleanupPairing();
+    _modalWasOpen = $showPairingModal;
+  }
+
+  function _cleanupPairing() {
     if (pairingCode && hostState === 'waiting') {
       cancelPairingCode(pairingCode, get(currentAuthUid)).catch(() => {});
     }
@@ -111,27 +119,17 @@
     pairingCode = '';
     enteredCode = '';
     errorMsg = '';
-    showPairingModal.set(false);
+  }
+
+  function closeModal() {
+    showPairingModal.set(false); // reactive above handles cleanup
   }
 
   function formatCountdown(s) {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
-  // Keyboard shortcuts
-  function onKeydown(e) {
-    if (e.key === 'Escape') return;
-    if (e.key === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey && !$editingCardId) {
-      const tag = document.activeElement?.tagName;
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
-      const b = $boards.filter(b => !b.archived)[0];
-      const bid = $currentView === 'board' ? $currentBoardId : b?.id;
-      if (bid) createCard(bid);
-    }
-  }
 </script>
-
-<svelte:window on:keydown={onKeydown} />
 
 {#if $currentView === 'today'}
   <TodayView />

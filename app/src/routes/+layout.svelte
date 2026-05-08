@@ -10,6 +10,9 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .catch(e => console.error('SW registration failed:', e));
+      // When a new service worker takes over (autoUpdate skips waiting),
+      // reload so the page uses the new SW's asset cache and avoids blank screens.
+      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
     }
     isOnline = navigator.onLine;
   });
@@ -83,6 +86,7 @@
   function setView(view, boardId = null) {
     currentView.set(view);
     currentBoardId.set(boardId);
+    sidebarOpen = false;
   }
 
   function getBoardCardCount(boardId) {
@@ -101,6 +105,11 @@
   $: archivedBoards = $boards.filter(b => b.archived);
 
   let showArchived = false;
+  let sidebarOpen = false;
+
+  $: mobileTitle = $currentView === 'board'
+    ? ($boards.find(b => b.id === $currentBoardId)?.name || 'Board')
+    : ({ today: 'Today', waiting: 'Waiting On' }[$currentView] || 'Tasks');
 
   function getChildren(parentId) {
     return activeBoards.filter(b => b.parent_id === parentId);
@@ -124,12 +133,16 @@
       if ($showBoardModal) { showBoardModal.set(false); return; }
       if ($showPairingModal) { showPairingModal.set(false); return; }
       if (showShortcuts) { showShortcuts = false; return; }
+      if (sidebarOpen) { sidebarOpen = false; return; }
     } else if (e.key === '?') {
       showShortcuts = !showShortcuts;
     } else if (e.key === 't' || e.key === 'T') {
       setView('today');
     } else if (e.key === 'w' || e.key === 'W') {
       setView('waiting');
+    } else if (e.key === 'b' || e.key === 'B') {
+      const boardId = $currentBoardId || $boards.filter(b => !b.archived)[0]?.id;
+      if (boardId) setView('board', boardId);
     } else if (e.key === 'n' || e.key === 'N') {
       const board = ($currentView === 'board' && $currentBoardId)
         ? $boards.find(b => b.id === $currentBoardId)
@@ -147,7 +160,7 @@
 
 <div class="app">
   <!-- Sidebar -->
-  <aside class="sidebar">
+  <aside class="sidebar" class:open={sidebarOpen}>
     <div class="sidebar-header">
       <div class="logo">Tasks</div>
       <div class="sync-status">
@@ -280,10 +293,21 @@
         Link device
       </button>
     </div>
+
   </aside>
+
+  {#if sidebarOpen}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="sidebar-backdrop" on:click={() => sidebarOpen = false}></div>
+  {/if}
 
   <!-- Main content -->
   <main class="main">
+    <div class="mobile-topbar">
+      <button class="hamburger-btn" on:click={() => sidebarOpen = !sidebarOpen} aria-label="Open navigation">☰</button>
+      <span class="mobile-topbar-title">{mobileTitle}</span>
+    </div>
     <slot />
   </main>
 </div>
@@ -308,6 +332,7 @@
           <div class="shortcut-row"><kbd>N</kbd><span>New task</span></div>
           <div class="shortcut-row"><kbd>T</kbd><span>Today view</span></div>
           <div class="shortcut-row"><kbd>W</kbd><span>Waiting On view</span></div>
+          <div class="shortcut-row"><kbd>B</kbd><span>Board view</span></div>
           <div class="shortcut-row"><kbd>Esc</kbd><span>Close modal</span></div>
           <div class="shortcut-row"><kbd>?</kbd><span>Show shortcuts</span></div>
         </div>
@@ -601,27 +626,69 @@
     flex-shrink: 0;
   }
 
+  /* Mobile top bar — hidden on desktop */
+  .mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    height: 52px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .hamburger-btn {
+    font-size: 18px;
+    color: var(--ink-2);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .hamburger-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .mobile-topbar-title {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 500;
+    font-style: italic;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+  }
+
+  /* Sidebar backdrop (shown when sidebar is open on mobile) */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 24, 20, 0.35);
+    z-index: 499;
+  }
+
   @media (max-width: 768px) {
-    .app { flex-direction: column; height: auto; }
+    /* Sidebar becomes a fixed overlay; hidden by default */
     .sidebar {
-      width: 100%;
-      flex-direction: row;
-      overflow-x: auto;
-      border-right: none;
-      border-bottom: 1px solid var(--line);
-      padding: 6px 8px;
-      gap: 2px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      z-index: 500;
+      transform: translateX(-100%);
+      transition: transform 0.22s ease;
+      width: min(300px, 85vw);
+      /* desktop flex-direction: column and other defaults still apply */
+      overflow-y: auto;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.12);
     }
-    .sidebar-header { display: none; }
-    .sidebar-section { padding: 0; display: flex; gap: 2px; flex-shrink: 0; }
-    .sidebar-label { display: none; }
-    .nav-item { white-space: nowrap; padding: 0 14px; flex-shrink: 0; min-height: 44px; display: flex; align-items: center; }
-    .child-item { padding-left: 14px; }
-    .new-board { display: none; }
-    .archived-toggle { display: none; }
-    .archived-item { display: none; }
-    .sidebar-footer { display: none; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-backdrop { display: block; }
+
+    /* App and main layout */
+    .app { height: auto; min-height: 100vh; }
+    .mobile-topbar { display: flex; }
+    .main { height: auto; overflow: visible; flex: 1; }
+
+    /* Offline banner safe area */
     .offline-banner { padding: 10px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-    .main { height: auto; }
   }
 </style>

@@ -1,6 +1,6 @@
 <script>
   import { cards, boards, currentBoardId, currentView, editingCardId, createCard, moveCard, updateCard, deleteCard, editingBoardId, showBoardModal } from './store.js';
-  import { effectiveColumn, isOverdue, isWaitingStale, sortTodo, sortDone, formatDateRel, todayISO, COLUMN_NAMES } from './logic.js';
+  import { effectiveColumn, isOverdue, isWaitingStale, sortTodo, sortDone, formatDateRel, todayISO, tomorrowISO, daysBetween, COLUMN_NAMES } from './logic.js';
   import BoardCard from './BoardCard.svelte';
 
   const COLS = ['todo', 'today', 'progress', 'done'];
@@ -16,12 +16,11 @@
   $: doneSorted = sortDone(grouped.done || []);
   $: doneRecent = doneSorted.filter(c => {
     if (!c.completed_at) return true;
-    const d = new Date(c.completed_at);
-    return (Date.now() - d.getTime()) < 7 * 86400000;
+    return daysBetween(c.completed_at, todayISO()) < 7;
   });
   $: doneOlder = doneSorted.filter(c => {
     if (!c.completed_at) return false;
-    return (Date.now() - new Date(c.completed_at).getTime()) >= 7 * 86400000;
+    return daysBetween(c.completed_at, todayISO()) >= 7;
   });
 
   function groupCards(cs) {
@@ -55,7 +54,7 @@
     if (col === 'todo' && effectiveColumn(c) === 'today') {
       // Open reschedule modal instead of prompt()
       rescheduleCardId = dragCardId;
-      rescheduleDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      rescheduleDate = tomorrowISO();
     } else {
       moveCard(dragCardId, col);
     }

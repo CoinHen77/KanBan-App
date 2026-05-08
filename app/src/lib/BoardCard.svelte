@@ -69,7 +69,7 @@
       <span class="card-recur-icon">↻</span>
     {/if}
     {#if card.waiting_on}
-      <span class="card-pause-icon" class:stale>{stale ? '❚❚' : '❚❚'}</span>
+      <span class="card-pause-icon" class:stale>❚❚</span>
     {/if}
   </div>
 

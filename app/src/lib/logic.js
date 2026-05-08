@@ -78,7 +78,7 @@ export function computeNextDueDate(from, rec) {
 
   if (rec.freq === 'daily') {
     start.setDate(start.getDate() + 1);
-    return start.toISOString().slice(0, 10);
+    return localISO(start);
   }
 
   if (rec.freq === 'weekly') {
@@ -86,14 +86,14 @@ export function computeNextDueDate(from, rec) {
     for (let i = 1; i <= 14; i++) {
       const d = new Date(start);
       d.setDate(d.getDate() + i);
-      if (days.includes(d.getDay())) return d.toISOString().slice(0, 10);
+      if (days.includes(d.getDay())) return localISO(d);
     }
   }
 
   if (rec.freq === 'monthly') {
     const d = new Date(start);
     d.setMonth(d.getMonth() + 1);
-    return d.toISOString().slice(0, 10);
+    return localISO(d);
   }
 
   return null;

@@ -12,7 +12,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: '/200.html',
-        additionalManifestEntries: [{ url: '/200.html', revision: null }],
+        additionalManifestEntries: [{ url: '/200.html', revision: Date.now().toString() }],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
